@@ -76,6 +76,8 @@ else:
         st.success("🎉 You win! All safe cells revealed.")
 
 show_board()
+import platform
+st.write("Python version:", platform.python_version())
 
 # Reset button
 if st.button("🔄 Reset Game"):
