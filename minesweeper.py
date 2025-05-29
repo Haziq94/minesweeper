@@ -80,4 +80,4 @@ show_board()
 # Reset button
 if st.button("🔄 Reset Game"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
