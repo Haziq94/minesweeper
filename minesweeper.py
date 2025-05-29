@@ -54,26 +54,25 @@ def reveal(r, c):
 
 def show_board():
     for r in range(rows):
-        cols_list = []
+        cols_layout = st.columns(cols)
         for c in range(cols):
             if st.session_state.revealed[r][c]:
                 val = st.session_state.board[r][c]
                 if val == -1:
-                    cols_list.append("💣")
+                    cols_layout[c].markdown("### 💣")
                 elif val == 0:
-                    cols_list.append("")
+                    cols_layout[c].markdown("### &nbsp;")  # empty cell
                 else:
-                    cols_list.append(str(val))
+                    cols_layout[c].markdown(f"### {val}")
             else:
                 button_key = f"{r},{c}"
-                if st.button(" ", key=button_key):
+                if cols_layout[c].button(" ", key=button_key):
                     if st.session_state.board[r][c] == -1:
                         st.session_state.game_over = True
                         st.session_state.revealed[:, :] = True
                     else:
                         reveal(r, c)
                     st.rerun()
-        st.write(" ".join(f"[{c}]" for c in cols_list))
 
 show_board()
 
