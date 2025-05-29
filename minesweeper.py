@@ -1,88 +1,53 @@
-from kivy.app import App
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.core. window import Window
+# minesweeper_app.py
+import streamlit as st
+import numpy as np
 import random
 
-class MinesweeperApp(App):
-    def build(self):
-        self.rows = 10
-        self.cols = 10
-        self.num_mines = 10
-        self.buttons = [[None for _ in range(self.cols)] for _ in range(self.rows)]
-        self.mines = [[False for _ in range(self.cols)] for _ in range(self.rows)]
-        self.exposed = [[False for _ in range(self.cols)] for _ in range(self.rows)]
-        self.mine_counts = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
+st.set_page_config(page_title="Minesweeper Game")
 
-        layout = BoxLayout(orientation='vertical')
-        self.grid = GridLayout(col=self.cols)
-        layout.add_widget(self.grid)
+st.title("💣 Minesweeper Game")
 
-        self.info_label = Label(text="Minesweeper", size_hint_y=0.1)
-        layout.add_widget(self.info_label)
+rows = st.slider("Rows", 5, 15, 8)
+cols = st.slider("Columns", 5, 15, 8)
+mines = st.slider("Mines", 5, min(rows * cols - 1, 50), 10)
 
-        for row in range(self.rows):
-            for col in range(self.cols):
-                button = Button(size_hint=(None, None), width=40, height=40)
-                button.bind(on_release=self.reveal)
-                self.grid.add_widget(button)
-                self.buttons[row][col] = button
+if "board" not in st.session_state:
+    def generate_board():
+        board = np.zeros((rows, cols), dtype=int)
+        mine_coords = random.sample(range(rows * cols), mines)
+        for idx in mine_coords:
+            r, c = divmod(idx, cols)
+            board[r][c] = -1  # -1 means mine
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    if 0 <= r + dr < rows and 0 <= c + dc < cols and board[r + dr][c + dc] != -1:
+                        board[r + dr][c + dc] += 1
+        return board
 
-        self.place_mines()
+    st.session_state.board = generate_board()
+    st.session_state.revealed = np.full((rows, cols), False)
 
-        return layout
-
-    def place_mines(self):
-        mines_placed = 0
-        while mines_placed < self.num_mines:
-            r = random.randint(0, self.rows - 1)
-            c = random.randint(0, self.cols - 1)
-            if not self.mines[r][c]:
-                self.mines[r][c] = True
-                mines_placed += 1
-                self.update_counts(r,c)
-
-    def update_counts(self,r,c):
-        for i in range(r - 1, r + 2):
-            for j in range(c - 1, c + 2):
-                if 0 <= i < self.rows and 0 <= j < self.cols and not self.mines[i][j]:
-                    self.mine_counts[i][j] += 1
-
-    def reveal(self, button):
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.buttons[row][col]:
-                    self.buttons[row][col].text = "M"
-                    self.buttons[row][col].background_color = (1,0,0,1)
-                    self.info_label.text = "Game Over!"
-                    self.show_all_mines()
+def show_board():
+    for r in range(rows):
+        cols_list = []
+        for c in range(cols):
+            if st.session_state.revealed[r][c]:
+                val = st.session_state.board[r][c]
+                if val == -1:
+                    cols_list.append("💣")
+                elif val == 0:
+                    cols_list.append("⬜")
                 else:
-                    self.expose_cell(row, col)
-                return
+                    cols_list.append(str(val))
+            else:
+                if st.button(" ", key=f"{r}_{c}"):
+                    st.session_state.revealed[r][c] = True
+                    if st.session_state.board[r][c] == -1:
+                        st.error("Game Over! You hit a mine.")
+        st.write(" ".join(cols_list))
 
-    def expose_cell(self,r,c):
-        if self.exposed[r][c]:
-            return
+show_board()
 
-        self.exposed[r][c] = True
-        count = self.mine_counts[r][c]
-        if count > 0:
-            self.buttons[r][c].text = str(count)
-        else:
-            self.buttons[r][c].text = ""
-            for i in range(r - 1, r + 2):
-                for j in range(c - 1, c + 2):
-                    if 0 <= i < self.rows and 0 <= j < self.cols:
-                        self.expose_cell(i, j)
-
-    def show_all_mines(self):
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.mines[row][col]:
-                    self.buttons[row][col].text = "M"
-                    self.buttons[row][col].background_color = (1,0,0,1)
-
-if __name__ == '__main__':
-    MinesweeperApp().run()
+if st.button("Reset Game"):
+    st.session_state.clear()
+    st.experimental_rerun()
