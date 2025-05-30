@@ -105,7 +105,7 @@ def show_board():
                     st.rerun()
                 else:
                     cols_layout[c].markdown(
-                        f"<div style='text-align:center;font-size:22px'>{label}</div>",
+                        f"<div style='text-align:center;font-size:22px'></div>",
                         unsafe_allow_html=True
                     )
 
