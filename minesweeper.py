@@ -56,7 +56,7 @@ def reveal(r, c):
                 if 0 <= nr < rows and 0 <= nc < cols:
                     reveal(nr, nc)
 
-# Show game board
+# Show game board with chording
 def show_board():
     colors = [
         "", "blue", "green", "red", "purple",
@@ -67,32 +67,58 @@ def show_board():
         cols_layout = st.columns(cols, gap="small")
         for c in range(cols):
             key = f"{r}-{c}"
+            val = st.session_state.board[r][c]
+            revealed = st.session_state.revealed[r][c]
+            flagged = st.session_state.flags[r][c]
 
-            if st.session_state.revealed[r][c]:
-                val = st.session_state.board[r][c]
+            def auto_reveal_adjacent():
+                count_flags = 0
+                unrevealed_unflagged = []
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < rows and 0 <= nc < cols:
+                            if st.session_state.flags[nr][nc]:
+                                count_flags += 1
+                            elif not st.session_state.revealed[nr][nc]:
+                                unrevealed_unflagged.append((nr, nc))
+                if count_flags == val:
+                    for nr, nc in unrevealed_unflagged:
+                        if st.session_state.board[nr][nc] == -1:
+                            st.session_state.revealed[:, :] = True
+                            st.session_state.game_over = True
+                        else:
+                            reveal(nr, nc)
+
+            if revealed:
                 if val == -1:
-                    cell = "💣"
-                    html = f"<div style='text-align:center;font-size:22px'>{cell}</div>"
+                    html = f"<div style='text-align:center;font-size:22px'>💣</div>"
                 elif val == 0:
                     html = "<div style='text-align:center;font-size:22px'>&nbsp;</div>"
                 else:
                     color = colors[val]
                     html = f"<div style='text-align:center;font-size:22px;color:{color}'><b>{val}</b></div>"
+
+                if cols_layout[c].button(" ", key=key):
+                    if val > 0:
+                        auto_reveal_adjacent()
+                        st.rerun()
                 cols_layout[c].markdown(html, unsafe_allow_html=True)
+
             else:
-                label = "🚩" if st.session_state.flags[r][c] else "⬜"
+                label = "🚩" if flagged else "⬜"
                 if cols_layout[c].button(label, key=key):
                     if flag_mode:
-                        st.session_state.flags[r][c] = not st.session_state.flags[r][c]
+                        st.session_state.flags[r][c] = not flagged
                     else:
-                        if st.session_state.board[r][c] == -1:
+                        if val == -1:
                             st.session_state.game_over = True
                             st.session_state.revealed[:, :] = True
                         else:
                             reveal(r, c)
                     st.rerun()
 
-# Calculate win
+# Win detection
 total_cells = rows * cols
 revealed_count = np.count_nonzero(st.session_state.revealed)
 win_condition = (
@@ -107,11 +133,8 @@ if win_condition:
 elif st.session_state.game_over:
     st.error("💥 Game Over! You hit a mine.")
 
-# Only allow interaction if game is ongoing
-if not (st.session_state.game_over or win_condition):
-    show_board()
-else:
-    show_board()  # Still render revealed board for display
+# Render board
+show_board()
 
 # Reset button
 if st.button("🔄 Reset Game"):
