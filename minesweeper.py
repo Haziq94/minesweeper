@@ -87,22 +87,29 @@ def show_board():
                             reveal(r, c)
                     st.rerun()
 
-# Run the game
-if not (st.session_state.game_over or win_condition):
-    show_board()
-
 # Check for win condition
 total_cells = rows * cols
 revealed_count = np.count_nonzero(st.session_state.revealed)
-if not st.session_state.game_over and revealed_count == total_cells - mines:
-    st.success("🎉 Congratulations, you cleared the minefield!")
-    st.session_state.revealed[:, :] = True  # Show all
+win_condition = (
+    not st.session_state.game_over
+    and revealed_count == total_cells - mines
+)
 
-# Game Over message
-if st.session_state.game_over:
+# Show result messages
+if win_condition:
+    st.success("🎉 Congratulations, you cleared the minefield!")
+    st.session_state.revealed[:, :] = True  # Reveal all
+elif st.session_state.game_over:
     st.error("💥 Game Over! You hit a mine.")
 
-# Reset
+# Only allow playing if game is not over
+if not (st.session_state.game_over or win_condition):
+    show_board()
+else:
+    show_board()  # Optional: still show board after end, or comment this out to freeze
+
+# Reset button
 if st.button("🔄 Reset Game"):
     st.session_state.clear()
     st.rerun()
+
