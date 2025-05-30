@@ -9,6 +9,7 @@ st.title("💣 Minesweeper")
 rows = st.slider("Rows", 5, 15, 8)
 cols = st.slider("Columns", 5, 15, 8)
 mines = st.slider("Mines", 1, rows * cols // 3, 10)
+flag_mode = st.toggle("🚩 Flag Mode", value=False)
 
 # ✅ Initialize session state variables safely
 if "board" not in st.session_state:
@@ -61,17 +62,24 @@ def show_board():
                 if val == -1:
                     cols_layout[c].markdown("### 💣")
                 elif val == 0:
-                    cols_layout[c].markdown("### &nbsp;")  # empty cell
+                    cols_layout[c].markdown("### &nbsp;")
                 else:
                     cols_layout[c].markdown(f"### {val}")
+            elif st.session_state.flags[r][c]:
+                if cols_layout[c].button("🚩", key=f"flag-{r},{c}"):
+                    if flag_mode:
+                        st.session_state.flags[r][c] = False
+                        st.rerun()
             else:
-                button_key = f"{r},{c}"
-                if cols_layout[c].button(" ", key=button_key):
-                    if st.session_state.board[r][c] == -1:
-                        st.session_state.game_over = True
-                        st.session_state.revealed[:, :] = True
+                if cols_layout[c].button(" ", key=f"cell-{r},{c}"):
+                    if flag_mode:
+                        st.session_state.flags[r][c] = True
                     else:
-                        reveal(r, c)
+                        if st.session_state.board[r][c] == -1:
+                            st.session_state.game_over = True
+                            st.session_state.revealed[:, :] = True
+                        else:
+                            reveal(r, c)
                     st.rerun()
 
 show_board()
@@ -82,4 +90,10 @@ if st.session_state.game_over:
 # ✅ Reset button
 if st.button("🔄 Reset Game"):
     st.session_state.clear()
+    st.session_state.flags = np.full((rows, cols), False)
     st.rerun()
+
+# Update session state
+if "flags" not in st.session_state:
+    st.session_state.flags = np.full((rows, cols), False)
+
