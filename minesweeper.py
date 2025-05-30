@@ -92,18 +92,22 @@ def show_board():
 
             if revealed:
                 if val == -1:
-                    html = f"<div style='text-align:center;font-size:22px'>💣</div>"
+                    label = "💣"
                 elif val == 0:
-                    html = "<div style='text-align:center;font-size:22px'>&nbsp;</div>"
+                    label = " "
                 else:
                     color = colors[val]
-                    html = f"<div style='text-align:center;font-size:22px;color:{color}'><b>{val}</b></div>"
+                    label = f":{color}[{val}]"
 
-                if cols_layout[c].button(" ", key=key):
-                    if val > 0:
-                        auto_reveal_adjacent()
-                        st.rerun()
-                cols_layout[c].markdown(html, unsafe_allow_html=True)
+                # Use button only if chording is possible
+                if val > 0 and cols_layout[c].button(label, key=key):
+                    auto_reveal_adjacent()
+                    st.rerun()
+                else:
+                    cols_layout[c].markdown(
+                        f"<div style='text-align:center;font-size:22px'>{label}</div>",
+                        unsafe_allow_html=True
+                    )
 
             else:
                 label = "🚩" if flagged else "⬜"
