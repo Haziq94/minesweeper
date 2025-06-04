@@ -50,28 +50,27 @@ def check_win():
                 return False
     return True
 
-# Game UI
+# CSS for tight layout
+st.markdown("""
+    <style>
+    div[data-testid="column"] {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+    button[kind="secondary"] {
+        height: 40px !important;
+        width: 40px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 flag_mode = st.toggle("🚩 Flag mode", value=False)
 
 def show_board():
-    button_style = """
-        <style>
-        div[data-testid="column"] {
-            padding: 0px !important;
-            margin: 0px !important;
-        }
-        button[kind="secondary"] {
-            height: 40px !important;
-            width: 40px !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        </style>
-    """
-    st.markdown(button_style, unsafe_allow_html=True)
-
     for r in range(rows):
-        cols_layout = st.columns(cols, gap="0")  # no spacing
+        cols_layout = st.columns(cols)  # removed gap="0"
         for c in range(cols):
             key = f"{r}-{c}"
             val = st.session_state.board[r][c]
@@ -80,7 +79,6 @@ def show_board():
             is_mine = val == -1
             show_mine = st.session_state.game_over and is_mine
 
-            display = ""
             if revealed or show_mine:
                 if is_mine:
                     display = "💣"
@@ -88,14 +86,14 @@ def show_board():
                     display = ""
                 else:
                     color = colors[val]
-                    display = f":{color}[{val}]"
+                    display = f"<span style='color:{color};'><b>{val}</b></span>"
                 cols_layout[c].markdown(
                     f"<div style='text-align:center; font-size:22px; height:40px;'>{display}</div>",
                     unsafe_allow_html=True
                 )
             else:
-                btn_label = "🚩" if flagged else " "
-                if cols_layout[c].button(btn_label, key=key):
+                label = "🚩" if flagged else " "
+                if cols_layout[c].button(label, key=key):
                     if flag_mode:
                         st.session_state.flags[r][c] = not flagged
                     else:
@@ -107,7 +105,7 @@ def show_board():
                             reveal(r, c)
                     st.rerun()
 
-# Main logic
+# Game logic
 if not st.session_state.game_over and not st.session_state.won:
     show_board()
     if check_win():
@@ -117,7 +115,7 @@ elif st.session_state.game_over:
     show_board()
     st.error("💥 Boom! You hit a mine.")
 
-# Restart
+# Restart button
 if st.button("🔄 Restart"):
     for key in ["board", "revealed", "flags", "game_over", "won"]:
         st.session_state.pop(key, None)
