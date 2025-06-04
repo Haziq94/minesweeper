@@ -90,7 +90,7 @@ def show_board():
                         else:
                             reveal(nr, nc)
 
-            if revealed:
+            if revealed or (st.session_state.game_over and val == -1):
                 if val == -1:
                     label = "💣"
                 elif val == 0:
