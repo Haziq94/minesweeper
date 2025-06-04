@@ -10,27 +10,27 @@ colors = {
 }
 
 # Initialize game state
-if "board" not in st.session_state:
-    def create_board():
-        board = np.zeros((rows, cols), dtype=int)
-        mines = random.sample(range(rows * cols), num_mines)
-        for mine in mines:
-            r, c = divmod(mine, cols)
-            board[r][c] = -1
-            for dr in [-1, 0, 1]:
-                for dc in [-1, 0, 1]:
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != -1:
-                        board[nr][nc] += 1
-        return board
-
-    st.session_state.board = create_board()
+def initialize_game():
+    board = np.zeros((rows, cols), dtype=int)
+    mines = random.sample(range(rows * cols), num_mines)
+    for mine in mines:
+        r, c = divmod(mine, cols)
+        board[r][c] = -1
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != -1:
+                    board[nr][nc] += 1
+    st.session_state.board = board
     st.session_state.revealed = np.full((rows, cols), False)
     st.session_state.flags = np.full((rows, cols), False)
     st.session_state.game_over = False
     st.session_state.won = False
 
-# Reveal cell logic
+if "board" not in st.session_state:
+    initialize_game()
+
+# Reveal logic
 def reveal(r, c):
     if st.session_state.revealed[r][c] or st.session_state.flags[r][c]:
         return
@@ -42,7 +42,7 @@ def reveal(r, c):
                 if 0 <= nr < rows and 0 <= nc < cols:
                     reveal(nr, nc)
 
-# Win condition
+# Check win condition
 def check_win():
     for r in range(rows):
         for c in range(cols):
@@ -50,10 +50,10 @@ def check_win():
                 return False
     return True
 
-# Flag mode toggle
+# UI toggle for flag mode
 flag_mode = st.toggle("🚩 Flag mode", value=False)
 
-# Show board
+# Display board
 def show_board():
     for r in range(rows):
         cols_layout = st.columns(cols, gap="small")
@@ -114,7 +114,7 @@ def show_board():
                             reveal(r, c)
                     st.rerun()
 
-# Main game
+# Main logic
 if not st.session_state.game_over and not st.session_state.won:
     show_board()
     if check_win():
@@ -124,7 +124,7 @@ elif st.session_state.game_over:
     show_board()
     st.error("💥 Boom! You hit a mine.")
 
-# Restart button
+# Restart game
 if st.button("🔄 Restart"):
     for key in ["board", "revealed", "flags", "game_over", "won"]:
         st.session_state.pop(key, None)
