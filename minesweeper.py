@@ -116,7 +116,10 @@ elif st.session_state.game_over:
     st.error("💥 Boom! You hit a mine.")
 
 # Restart button
-if st.button("🔄 Restart"):
+st.markdown("---")
+st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+if st.button("🔄 Restart Game", key="restart"):
     for key in ["board", "revealed", "flags", "game_over", "won"]:
         st.session_state.pop(key, None)
     st.rerun()
+st.markdown("</div>", unsafe_allow_html=True)
