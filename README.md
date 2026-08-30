@@ -50,6 +50,24 @@ The app opens at <http://localhost:8501>.
 
 ---
 
+## 📱 Web version (`web/`)
+
+A self-contained HTML/CSS/JS build of the same game - no Python, no server, no
+network. Same rules as the Streamlit app: safe first click, chording, protected
+flags, animated reveals. Built to run well on a phone, and to be the base for
+packaging as an installable app.
+
+Open `web/index.html` directly, or serve it:
+
+```bash
+python -m http.server 8600 --directory web
+```
+
+Then visit <http://localhost:8600>. On a phone: tap to dig, long-press to flag,
+tap a number to open its neighbours.
+
+---
+
 ## 🎮 How to Play
 
 - Set the grid size and mine count in the **⚙️ Settings** sidebar; changing any of them deals a new board.

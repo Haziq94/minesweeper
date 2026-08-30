@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f6fb">
+<title>Minesweeper</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <h1 class="title">💣 Minesweeper</h1>
+    <button type="button" id="settings-btn" class="icon" aria-label="Settings">⚙️</button>
+  </header>
+
+  <div class="bar">
+    <div class="chip" id="counter">🚩 10</div>
+    <button type="button" id="flag-mode" class="toggle" aria-pressed="false">🚩 Flag</button>
+  </div>
+
+  <p class="message" id="message" role="status"></p>
+
+  <div class="panel">
+    <div class="board" id="board"></div>
+  </div>
+
+  <button type="button" id="new-game" class="primary">🔄 New Game</button>
+
+  <p class="hint">Tap to dig · long-press (or right-click) to flag · tap a number to open its neighbours</p>
+</div>
+
+<dialog class="sheet" id="settings">
+  <h2>⚙️ Settings</h2>
+  <div class="fields">
+    <label>Rows<input type="number" id="rows" min="5" max="30" step="1" value="10" inputmode="numeric"></label>
+    <label>Columns<input type="number" id="cols" min="5" max="30" step="1" value="10" inputmode="numeric"></label>
+    <label>Mines<input type="number" id="mines" min="1" step="1" value="10" inputmode="numeric"></label>
+  </div>
+  <div class="actions">
+    <button type="button" id="cancel" class="ghost">Cancel</button>
+    <button type="button" id="apply" class="primary">Apply &amp; restart</button>
+  </div>
+</dialog>
+
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+<script src="game.js"></script>
+</body>
+</html>

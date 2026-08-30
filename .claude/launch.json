@@ -4,8 +4,27 @@
     {
       "name": "minesweeper",
       "runtimeExecutable": "streamlit",
-      "runtimeArgs": ["run", "minesweeper.py", "--server.port", "8501", "--server.headless", "true"],
+      "runtimeArgs": [
+        "run",
+        "minesweeper.py",
+        "--server.port",
+        "8501",
+        "--server.headless",
+        "true"
+      ],
       "port": 8501
+    },
+    {
+      "name": "minesweeper-web",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8600",
+        "--directory",
+        "web"
+      ],
+      "port": 8600
     }
   ]
 }
