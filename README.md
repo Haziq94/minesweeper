@@ -49,6 +49,7 @@ The app opens at <http://localhost:8501>.
 
 ## 🎮 How to Play
 
+- Set the grid size and mine count in the **⚙️ Settings** sidebar; changing any of them deals a new board.
 - Click a covered cell to reveal it.
 - Turn on **🚩 Flag mode** to mark suspected mines instead of revealing them; turn it off to go back to revealing.
 - Clear every cell that isn't a mine to win.
