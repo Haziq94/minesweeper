@@ -66,6 +66,18 @@ python -m http.server 8600 --directory web
 Then visit <http://localhost:8600>. On a phone: tap to dig, long-press to flag,
 tap a number to open its neighbours.
 
+### Installing it on a phone
+
+The web version is a PWA: it ships a manifest, icons and a service worker that
+caches the whole game, so once installed it opens from the home screen and runs
+with no network at all.
+
+Installing needs the files served over HTTPS - a phone cannot reach `localhost`
+on your computer. Host `web/` anywhere with HTTPS (GitHub Pages works and is
+free), open the URL in Chrome on the phone, and either tap the **Install on
+this device** button the page offers or use the browser menu's *Install app* /
+*Add to Home screen*.
+
 ---
 
 ## 🎮 How to Play

@@ -248,6 +248,17 @@ button:active { transform: translateY(1px); }
   color: var(--text);
 }
 
+.install {
+  width: 100%;
+  font-weight: 600;
+  border-style: dashed;
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--surface);
+}
+
+.install:hover { background: #eef1fe; }
+
 .hint {
   margin: 0;
   font-size: 0.8rem;

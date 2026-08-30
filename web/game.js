@@ -22,6 +22,7 @@ const el = {
   settingsBtn: document.getElementById("settings-btn"),
   settings: document.getElementById("settings"),
   app: document.getElementById("app"),
+  installBtn: document.getElementById("install"),
   confetti: document.getElementById("confetti"),
   rows: document.getElementById("rows"),
   cols: document.getElementById("cols"),
@@ -346,5 +347,36 @@ el.applyBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("resize", fitBoard);
+
+/* Install ---------------------------------------------------------------- */
+
+// Chrome hands the install prompt to the page rather than showing it itself,
+// so the offer lives on a button of ours and only appears when it can be used.
+let installPrompt = null;
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installPrompt = e;
+  el.installBtn.hidden = false;
+});
+
+el.installBtn.addEventListener("click", async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  el.installBtn.hidden = true;
+});
+
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  el.installBtn.hidden = true;
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => { /* needs https */ });
+  });
+}
 
 newGame();
