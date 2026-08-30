@@ -77,11 +77,12 @@ def show_board():
             revealed = st.session_state.revealed[r][c]
             flagged = st.session_state.flags[r][c]
             is_mine = val == -1
-            show_mine = st.session_state.game_over and is_mine
+            finished = st.session_state.game_over or st.session_state.won
+            show_mine = finished and is_mine
 
             if revealed or show_mine:
                 if is_mine:
-                    display = "💣"
+                    display = "🚩" if flagged else "💣"
                 elif val == 0:
                     display = ""
                 else:
@@ -106,14 +107,16 @@ def show_board():
                     st.rerun()
 
 # Game logic
-if not st.session_state.game_over and not st.session_state.won:
-    show_board()
-    if check_win():
-        st.success("🎉 You cleared the board! Well done!")
-        st.session_state.won = True
-elif st.session_state.game_over:
-    show_board()
+if not st.session_state.game_over and not st.session_state.won and check_win():
+    st.session_state.won = True
+    st.session_state.flags[st.session_state.board == -1] = True
+
+show_board()
+
+if st.session_state.game_over:
     st.error("💥 Boom! You hit a mine.")
+elif st.session_state.won:
+    st.success("🎉 You cleared the board! Well done!")
 
 # Restart button
 st.markdown("---")
