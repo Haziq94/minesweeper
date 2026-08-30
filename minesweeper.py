@@ -33,17 +33,10 @@ colors = {
 
 # Initialize game state
 def initialize_game():
-    board = np.zeros((rows, cols), dtype=int)
-    mines = random.sample(range(rows * cols), num_mines)
-    for mine in mines:
-        r, c = divmod(mine, cols)
-        board[r][c] = -1
-        for dr in [-1, 0, 1]:
-            for dc in [-1, 0, 1]:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != -1:
-                    board[nr][nc] += 1
-    st.session_state.board = board
+    # The board starts empty. Mines are laid on the first click so that it
+    # can never land on one.
+    st.session_state.board = np.zeros((rows, cols), dtype=int)
+    st.session_state.mines_placed = False
     st.session_state.revealed = np.full((rows, cols), False)
     st.session_state.flags = np.full((rows, cols), False)
     st.session_state.game_over = False
@@ -52,6 +45,31 @@ def initialize_game():
 
 if "board" not in st.session_state or st.session_state.settings != (rows, cols, num_mines):
     initialize_game()
+
+# Mine placement, deferred until the first click
+def place_mines(safe_r, safe_c):
+    board = st.session_state.board
+    # Keep the clicked cell and its neighbours clear, so the first click
+    # opens a region rather than a lone number.
+    zone = {
+        (safe_r + dr) * cols + (safe_c + dc)
+        for dr in [-1, 0, 1]
+        for dc in [-1, 0, 1]
+        if 0 <= safe_r + dr < rows and 0 <= safe_c + dc < cols
+    }
+    choices = [i for i in range(rows * cols) if i not in zone]
+    if len(choices) < num_mines:
+        # Too crowded to spare the neighbours; spare the clicked cell alone.
+        choices = [i for i in range(rows * cols) if i != safe_r * cols + safe_c]
+    for mine in random.sample(choices, num_mines):
+        r, c = divmod(mine, cols)
+        board[r][c] = -1
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != -1:
+                    board[nr][nc] += 1
+    st.session_state.mines_placed = True
 
 # Reveal logic
 def reveal(r, c):
@@ -220,13 +238,15 @@ def show_board():
                 if cols_layout[c].button(label, key=key):
                     if flag_mode:
                         st.session_state.flags[r][c] = not flagged
+                    elif not st.session_state.mines_placed:
+                        place_mines(r, c)
+                        reveal(r, c)
+                    elif is_mine:
+                        st.session_state.revealed[r][c] = True
+                        st.session_state.game_over = True
+                        st.session_state.revealed[:, :] = True
                     else:
-                        if is_mine:
-                            st.session_state.revealed[r][c] = True
-                            st.session_state.game_over = True
-                            st.session_state.revealed[:, :] = True
-                        else:
-                            reveal(r, c)
+                        reveal(r, c)
                     st.rerun()
 
 with st.container(key="board"):
@@ -236,6 +256,7 @@ with st.container(key="board"):
 st.write("")
 new_game = st.container(key="newgame")
 if new_game.button("🔄 New Game", key="restart", type="primary", use_container_width=True):
-    for key in ["board", "revealed", "flags", "game_over", "won", "settings"]:
+    for key in ["board", "revealed", "flags", "game_over", "won", "settings",
+                "mines_placed"]:
         st.session_state.pop(key, None)
     st.rerun()

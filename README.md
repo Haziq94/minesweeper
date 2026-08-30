@@ -8,7 +8,8 @@ A simple, interactive Minesweeper game built using **Python** and **Streamlit**.
 
 - Adjustable grid size (rows x columns)
 - Adjustable number of mines
-- Recursive reveal of empty cells
+- First click is always safe - mines are laid after it
+- Flood-fill reveal of empty cells
 - Game over and win detection
 - Emoji-based UI for better UX
 - Fully playable in browser
