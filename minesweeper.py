@@ -333,9 +333,10 @@ def show_board():
             if revealed and val > 0 and not finished:
                 # A revealed number stays clickable so it can be chorded.
                 if cols_layout[c].button(str(val), key=key, type="tertiary"):
+                    # A revealed number cannot be flagged, so it chords
+                    # in either mode.
                     before = st.session_state.revealed.copy()
-                    if not flag_mode:
-                        chord(r, c)
+                    chord(r, c)
                     mark_fresh(before, (r, c))
                     st.rerun()
             elif revealed or (finished and is_mine):

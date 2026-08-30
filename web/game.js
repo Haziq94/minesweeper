@@ -145,8 +145,9 @@ function reveal(start) {
 
 function tap(i) {
   if (!S || S.over || S.won) return;
-  if (flagMode) { toggleFlag(i); return; }
+  // A revealed number cannot be flagged, so it chords in either mode.
   if (S.revealed[i]) { chord(i); return; }
+  if (flagMode) { toggleFlag(i); return; }
   if (S.flags[i]) return;                       // a flag protects its cell
   if (!S.placed) placeMines(i);
   if (S.board[i] === -1) { lose(i); return; }
