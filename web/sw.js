@@ -1,6 +1,6 @@
 // Bump this when any cached file changes, so returning players pick the new
 // version up instead of being served the old one forever.
-const CACHE = "minesweeper-v1";
+const CACHE = "minesweeper-v2";
 
 const ASSETS = [
   "./",
