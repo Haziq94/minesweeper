@@ -238,6 +238,9 @@ def show_board():
                 if cols_layout[c].button(label, key=key):
                     if flag_mode:
                         st.session_state.flags[r][c] = not flagged
+                    elif flagged:
+                        # A flag protects its cell; unflag it to dig there.
+                        pass
                     elif not st.session_state.mines_placed:
                         place_mines(r, c)
                         reveal(r, c)
