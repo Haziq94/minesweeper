@@ -86,6 +86,28 @@ def reveal(r, c):
                     if 0 <= nr < rows and 0 <= nc < cols:
                         stack.append((nr, nc))
 
+# Chording: a revealed number opens its unflagged neighbours once it carries
+# as many flags as its own value.
+def chord(r, c):
+    value = st.session_state.board[r][c]
+    neighbours = [
+        (r + dr, c + dc)
+        for dr in [-1, 0, 1]
+        for dc in [-1, 0, 1]
+        if (dr or dc) and 0 <= r + dr < rows and 0 <= c + dc < cols
+    ]
+    if sum(st.session_state.flags[nr][nc] for nr, nc in neighbours) != value:
+        return
+    for nr, nc in neighbours:
+        if st.session_state.flags[nr][nc] or st.session_state.revealed[nr][nc]:
+            continue
+        if st.session_state.board[nr][nc] == -1:
+            # A misplaced flag makes chording as fatal as digging by hand.
+            st.session_state.game_over = True
+            st.session_state.revealed[:, :] = True
+            return
+        reveal(nr, nc)
+
 # Win check
 def check_win():
     for r in range(rows):
@@ -160,6 +182,21 @@ st.markdown(f"""
     .st-key-board button[kind="secondary"]:hover {{
         background: #aeb8cd !important;
     }}
+    .st-key-board button[kind="tertiary"] {{
+        width: {cell_size}px !important;
+        height: {cell_size}px !important;
+        min-height: {cell_size}px !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 6px !important;
+        background: #e6eaf3 !important;
+        font-size: {font_size}px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }}
+    .st-key-board button[kind="tertiary"]:hover {{
+        background: #dbe2f0 !important;
+    }}
     .cell {{
         width: {cell_size}px;
         height: {cell_size}px;
@@ -209,6 +246,16 @@ if st.session_state.game_over:
 elif st.session_state.won:
     st.success("🎉 You cleared the board! Well done!")
 
+def number_colors():
+    board, revealed = st.session_state.board, st.session_state.revealed
+    rules = []
+    for value, color in colors.items():
+        cells = np.argwhere((board == value) & revealed)
+        if len(cells):
+            selector = ", ".join(f".st-key-{r}-{c} button" for r, c in cells)
+            rules.append(f"{selector} {{ color: {color} !important; }}")
+    return " ".join(rules)
+
 def show_board():
     finished = st.session_state.game_over or st.session_state.won
     for r in range(rows):
@@ -220,7 +267,13 @@ def show_board():
             flagged = st.session_state.flags[r][c]
             is_mine = val == -1
 
-            if revealed or (finished and is_mine):
+            if revealed and val > 0 and not finished:
+                # A revealed number stays clickable so it can be chorded.
+                if cols_layout[c].button(str(val), key=key, type="tertiary"):
+                    if not flag_mode:
+                        chord(r, c)
+                    st.rerun()
+            elif revealed or (finished and is_mine):
                 style = "cell"
                 if is_mine:
                     # A flagged mine reads as a catch, not as the one you hit.
@@ -252,6 +305,7 @@ def show_board():
                         reveal(r, c)
                     st.rerun()
 
+st.markdown(f"<style>{number_colors()}</style>", unsafe_allow_html=True)
 with st.container(key="board"):
     show_board()
 
