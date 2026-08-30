@@ -1,6 +1,11 @@
-// Bump this when any cached file changes, so returning players pick the new
-// version up instead of being served the old one forever.
-const CACHE = "minesweeper-v2";
+// Bumped only when the caching strategy itself changes. The app's own files no
+// longer need it: the shell is fetched from the network first, so an update
+// reaches an installed copy on its next online launch.
+const CACHE = "minesweeper-v3";
+
+// How long to wait for the network before falling back to the cache. Short
+// enough that a bad connection does not leave the player staring at nothing.
+const NETWORK_TIMEOUT = 3000;
 
 const ASSETS = [
   "./",
@@ -31,28 +36,65 @@ self.addEventListener("activate", event => {
   );
 });
 
-// Cache first: the whole game is a handful of static files, and serving them
-// from the cache is what lets it run with no network at all.
+// Rejects if the fetch has not answered in time. The fetch itself is left to
+// finish in the background; aborting a navigation request is not portable.
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("network timeout")), ms);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
+function store(request, response) {
+  if (response && response.ok) {
+    const copy = response.clone();
+    caches.open(CACHE).then(cache => cache.put(request, copy));
+  }
+  return response;
+}
+
+// The markup, styles and script change whenever the game does, so ask the
+// network first and keep the cache as the offline answer.
+async function networkFirst(request) {
+  try {
+    return store(request, await withTimeout(fetch(request), NETWORK_TIMEOUT));
+  } catch (error) {
+    const hit = await caches.match(request);
+    if (hit) return hit;
+    if (request.mode === "navigate") {
+      const shell = await caches.match("./index.html");
+      if (shell) return shell;
+    }
+    return Response.error();
+  }
+}
+
+// Icons are large and effectively fixed, so serve them straight from the cache.
+async function cacheFirst(request) {
+  const hit = await caches.match(request);
+  if (hit) return hit;
+  try {
+    return store(request, await fetch(request));
+  } catch (error) {
+    return Response.error();
+  }
+}
+
+const SHELL = /\.(?:html|css|js|json)$/;
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
 
-  event.respondWith(
-    caches.match(request).then(hit => {
-      if (hit) return hit;
-      return fetch(request)
-        .then(response => {
-          if (response.ok && new URL(request.url).origin === self.location.origin) {
-            const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Offline and not cached: a navigation still gets the app shell.
-          if (request.mode === "navigate") return caches.match("./index.html");
-          return Response.error();
-        });
-    })
-  );
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  const isShell = request.mode === "navigate" ||
+                  url.pathname.endsWith("/") ||
+                  SHELL.test(url.pathname);
+
+  event.respondWith(isShell ? networkFirst(request) : cacheFirst(request));
 });
