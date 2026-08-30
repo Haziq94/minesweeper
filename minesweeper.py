@@ -5,16 +5,27 @@ import random
 st.set_page_config(page_title="Minesweeper", page_icon="💣", layout="wide")
 
 # Configuration
-st.sidebar.header("⚙️ Settings")
-rows = st.sidebar.slider("Rows", 5, 20, 10, key="rows")
-cols = st.sidebar.slider("Columns", 5, 20, 10, key="cols")
+def clamp(value, low, high):
+    return max(low, min(int(value), high))
 
-# The mine slider's ceiling follows the grid, so clamp a carried-over value
+st.sidebar.header("⚙️ Settings")
+# Bounds are held here rather than left to the widgets, so a typed value is
+# capped whatever the browser sends.
+st.session_state.setdefault("rows", 10)
+st.session_state.setdefault("cols", 10)
+st.session_state.rows = clamp(st.session_state.rows, 5, 20)
+st.session_state.cols = clamp(st.session_state.cols, 5, 20)
+rows = st.sidebar.number_input("Rows", min_value=5, max_value=20, step=1, key="rows")
+cols = st.sidebar.number_input("Columns", min_value=5, max_value=20, step=1, key="cols")
+
+# The mine field's ceiling follows the grid, so clamp a carried-over value
 # before the widget is drawn with a smaller maximum.
 max_mines = rows * cols - 1
 st.session_state.setdefault("num_mines", 10)
-st.session_state.num_mines = min(st.session_state.num_mines, max_mines)
-num_mines = st.sidebar.slider("Mines", 1, max_mines, key="num_mines")
+st.session_state.num_mines = clamp(st.session_state.num_mines, 1, max_mines)
+num_mines = st.sidebar.number_input(
+    "Mines", min_value=1, max_value=max_mines, step=1, key="num_mines"
+)
 st.sidebar.caption("Changing a setting starts a new game.")
 
 # Cells shrink on wider grids so the board still fits the page.
@@ -41,6 +52,9 @@ def initialize_game():
     st.session_state.flags = np.full((rows, cols), False)
     st.session_state.game_over = False
     st.session_state.won = False
+    st.session_state.fresh = np.full((rows, cols), False)
+    st.session_state.origin = None
+    st.session_state.celebrated = False
     st.session_state.settings = (rows, cols, num_mines)
 
 if "board" not in st.session_state or st.session_state.settings != (rows, cols, num_mines):
@@ -85,6 +99,22 @@ def reveal(r, c):
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < rows and 0 <= nc < cols:
                         stack.append((nr, nc))
+
+# A rerun redraws the whole board, so record which cells actually changed in
+# the last action - only those are allowed to animate.
+def mark_fresh(before, origin):
+    st.session_state.fresh = st.session_state.revealed & ~before
+    st.session_state.origin = origin
+
+def is_fresh(r, c):
+    return bool(st.session_state.fresh[r][c]) or st.session_state.origin == (int(r), int(c))
+
+def anim_delay(r, c):
+    # Stagger by distance from the click, so a cascade ripples outward.
+    origin = st.session_state.origin
+    if origin is None:
+        return 0
+    return min(max(abs(int(r) - origin[0]), abs(int(c) - origin[1])), 16) * 22
 
 # Chording: a revealed number opens its unflagged neighbours once it carries
 # as many flags as its own value.
@@ -177,10 +207,11 @@ st.markdown(f"""
         box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.07) !important;
         font-size: {font_size}px !important;
         line-height: 1 !important;
-        transition: background 0.12s ease !important;
+        transition: background 0.12s ease, transform 0.12s ease !important;
     }}
     .st-key-board button[kind="secondary"]:hover {{
         background: #aeb8cd !important;
+        transform: translateY(-1px) !important;
     }}
     .st-key-board button[kind="tertiary"] {{
         width: {cell_size}px !important;
@@ -211,6 +242,22 @@ st.markdown(f"""
     .cell.mine {{
         background: #f6c9c4;
     }}
+    @keyframes pop {{
+        from {{ opacity: 0; transform: scale(0.55); }}
+        to {{ opacity: 1; transform: scale(1); }}
+    }}
+    @keyframes boom {{
+        0% {{ transform: scale(0.4); }}
+        55% {{ transform: scale(1.35); }}
+        100% {{ transform: scale(1); }}
+    }}
+    .cell.pop {{
+        animation: pop 0.24s ease-out both;
+    }}
+    .cell.boom {{
+        animation: boom 0.45s ease-out both;
+        background: #ef6a5c;
+    }}
     /* Keep the chrome the same width as the board panel. */
     .st-key-status div[data-testid="stColumn"]:last-child {{
         align-items: flex-end;
@@ -240,13 +287,18 @@ with st.container(key="status"):
 if not st.session_state.game_over and not st.session_state.won and check_win():
     st.session_state.won = True
     st.session_state.flags[st.session_state.board == -1] = True
+    st.session_state.fresh = st.session_state.fresh | (st.session_state.board == -1)
 
 if st.session_state.game_over:
     st.error("💥 Boom! You hit a mine.")
 elif st.session_state.won:
     st.success("🎉 You cleared the board! Well done!")
+    if not st.session_state.celebrated:
+        # Once only, or every later rerun would set them off again.
+        st.balloons()
+        st.session_state.celebrated = True
 
-def number_colors():
+def cell_styles():
     board, revealed = st.session_state.board, st.session_state.revealed
     rules = []
     for value, color in colors.items():
@@ -254,6 +306,17 @@ def number_colors():
         if len(cells):
             selector = ", ".join(f".st-key-{r}-{c} button" for r, c in cells)
             rules.append(f"{selector} {{ color: {color} !important; }}")
+    # Numbers are buttons, so their animation has to come through CSS too.
+    animated = [(r, c) for r, c in np.argwhere(revealed & (board > 0)) if is_fresh(r, c)]
+    origin = st.session_state.origin
+    if origin is not None and not revealed[origin[0]][origin[1]]:
+        # A freshly placed flag sits on a covered tile.
+        animated.append(origin)
+    for r, c in animated:
+        rules.append(
+            f".st-key-{r}-{c} button {{ animation: pop 0.24s ease-out both; "
+            f"animation-delay: {anim_delay(r, c)}ms; }}"
+        )
     return " ".join(rules)
 
 def show_board():
@@ -270,8 +333,10 @@ def show_board():
             if revealed and val > 0 and not finished:
                 # A revealed number stays clickable so it can be chorded.
                 if cols_layout[c].button(str(val), key=key, type="tertiary"):
+                    before = st.session_state.revealed.copy()
                     if not flag_mode:
                         chord(r, c)
+                    mark_fresh(before, (r, c))
                     st.rerun()
             elif revealed or (finished and is_mine):
                 style = "cell"
@@ -283,12 +348,18 @@ def show_board():
                     display = ""
                 else:
                     display = f"<span style='color:{colors[val]};'>{val}</span>"
+                if is_fresh(r, c):
+                    hit = st.session_state.game_over and is_mine and not flagged
+                    style += " boom" if hit and st.session_state.origin == (r, c) else " pop"
                 cols_layout[c].markdown(
-                    f"<div class='{style}'>{display}</div>", unsafe_allow_html=True
+                    f"<div class='{style}' style='animation-delay:{anim_delay(r, c)}ms'>"
+                    f"{display}</div>",
+                    unsafe_allow_html=True,
                 )
             else:
                 label = "🚩" if flagged else " "
                 if cols_layout[c].button(label, key=key):
+                    before = st.session_state.revealed.copy()
                     if flag_mode:
                         st.session_state.flags[r][c] = not flagged
                     elif flagged:
@@ -298,14 +369,14 @@ def show_board():
                         place_mines(r, c)
                         reveal(r, c)
                     elif is_mine:
-                        st.session_state.revealed[r][c] = True
                         st.session_state.game_over = True
                         st.session_state.revealed[:, :] = True
                     else:
                         reveal(r, c)
+                    mark_fresh(before, (r, c))
                     st.rerun()
 
-st.markdown(f"<style>{number_colors()}</style>", unsafe_allow_html=True)
+st.markdown(f"<style>{cell_styles()}</style>", unsafe_allow_html=True)
 with st.container(key="board"):
     show_board()
 
@@ -314,6 +385,6 @@ st.write("")
 new_game = st.container(key="newgame")
 if new_game.button("🔄 New Game", key="restart", type="primary", use_container_width=True):
     for key in ["board", "revealed", "flags", "game_over", "won", "settings",
-                "mines_placed"]:
+                "mines_placed", "fresh", "origin", "celebrated"]:
         st.session_state.pop(key, None)
     st.rerun()

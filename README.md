@@ -12,6 +12,7 @@ A simple, interactive Minesweeper game built using **Python** and **Streamlit**.
 - Flood-fill reveal of empty cells
 - Chording: open a satisfied number's remaining neighbours in one click
 - Game over and win detection
+- Animated reveals, a blast on the mine you hit, and balloons for a win
 - Emoji-based UI for better UX
 - Fully playable in browser
 
